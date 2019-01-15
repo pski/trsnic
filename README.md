@@ -213,7 +213,7 @@ or
 <0x01><errno>
 
 
-####CLOSE (0x07)
+#### CLOSE (0x07)
 
 Close a socket
 
