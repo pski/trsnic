@@ -4,9 +4,9 @@ trsnic is a general purpose TCP/IP network interface for the TRS-80 line of micr
 
 See the [RetroStoreCard](https://github.com/apuder/RetroStoreCard) repository for details on how to configure the card.
 
-##TCP/IP Socket API
+## TCP/IP Socket API
 
-###A lightweight TCP/IP networking API
+### A lightweight TCP/IP networking API
 
 This API provides a subset of the standard TCP/IP Berkeley Sockets API with just enough functionality to create functioning TCP/IP client applications for the TRS-80. We attempt to adhere to the conventions of the Unix standard sockets library found in <sys/types.h> and <sys/socket.h>.  All API calls are sent to the Z80 I/O port 31 as a sequence of bytes where the socket function is represented by a single byte code.  Other parameters are defined as bytes per the specification below.  Responses for each function are read from the same port 31.
 
@@ -16,9 +16,9 @@ For a quicker tutorial on using sockets, see <https://www.tutorialspoint.com/uni
 
 Only TCP streaming sockets are supported at this time.  UDP socket support will be in an upcoming release.  TLS sockets will also be implemented at some time in the future.
 
-###API Details
+### API Details
 
-####SOCKET (0x01)
+#### SOCKET (0x01)
 
 Open a socket. 
 
@@ -57,7 +57,7 @@ Failure returns <0x01><0x01> where byte 1 = error and byte 2 = errno (in this ca
 
 
 
-####CONNECT (0x02)
+#### CONNECT (0x02)
 
 Connect to a server socket.  Only used for streaming sockets, ie. TCP SOCK_STREAM
 
@@ -65,7 +65,7 @@ Connect to a server socket.  Only used for streaming sockets, ie. TCP SOCK_STREA
 
 There are 2 variations of CONNECT.  One accepts an IP address and one accepts a hostname.  Both accept a destination port.
 
-#####CONNECT using an IP Address
+##### CONNECT using an IP Address
 
 CONNECT with IP address consists of 10 bytes (for an IPv4 address) to send to the trsnic port.  Use 1 byte for the protocol, 1 byte for the sockfd, 1 byte for the host format (0x00 for IP address), 4 bytes for IPv4 addresses (or 6 bytes for IPv6 addresses, not currently supported) and a 2 byte port sent in network order.
 
