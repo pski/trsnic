@@ -97,7 +97,7 @@ PORT1 = 0x00 to 0xFF  LSB of 16bit port number
 
 `<0x14><0x02><SOCKFD><0xC0><0xA8><0x01><0x64><0x00><0x17>`
 
-#####CONNECT using a Hostname
+##### CONNECT using a Hostname
 
 CONNECT with a hostname consists of a series of bytes to send to the trsnic port.  Use 1 byte for the protocol, 1 byte for the sockfd, 1 byte for the host format(0x01 for hostname), the hostname in ASCII bytes followed by a NULL (0x00) (to indicate the end of the hostname) and ends with a 2 byte port sent in network order.
 
@@ -132,7 +132,7 @@ Failure returns `<0x01><0x01>` where byte 1 = error and byte 2 = errno
 
 
 
-####SEND (0x03)
+#### SEND (0x03)
 
 Sends data over the socket.
 
@@ -161,14 +161,14 @@ or
 `<0x01><0x06>` where byte 1 = error and byte 2 = errno 
 
 
-####SENDTO (0x04) (*Not yet supported*)
+#### SENDTO (0x04) (*Not yet supported*)
 
 Sends a UDP datagram over the socket.
 
 **Unix:** int send(int sockfd, const void *msg, int len, int flags);
 
 
-####RECV (0x05)
+#### RECV (0x05)
 
 Receive data from the socket.  Use only for connection oriented sockets ie. TCP.
 
@@ -197,7 +197,7 @@ or
 `<0x01><0x6>` where byte 1 = error and byte 2 = errno (in this case 6)
 
 
-####RECVFROM (0x06) (*Not yet supported*)
+#### RECVFROM (0x06) (*Not yet supported*)
 
 Receive a data gram from the socket.  Use only for connection-less sockets (ie. UDP);
 
