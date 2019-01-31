@@ -1,5 +1,10 @@
 # trsnic
 
+trsnic is a general purpose TCP/IP network interface for the TRS-80 line of microcomputers.  It is a fork of and therefore derived from and inspired by Arno Puder's amazing [RetroStoreCard](https://github.com/apuder/RetroStoreCard).  The product will initially support the TRS-80 Model III and 4 as this is the current support level of the RetroStoreCard source repository.  The long term goal is to support all TRS-80s, including the Models I/II/III/4/12/16/16B/6000.
+
+See the [RetroStoreCard](https://github.com/apuder/RetroStoreCard) repository for details on how to configure the card.
+
+
 trsnic provides the foundational protocols required to implement existing network interactions on the TRS-80 microcomputer.  The first such protocol provided is TCP/IP via an implementation of the Sockets API.  TCP/IP is the dominant low level network protocol in use today.  Many of today's higher level network protocols like HTTP and FTP are implemented on top of TCP/IP.  This means many modern networking systems can be built upon the base TCP/IP support provided by trsnic.
 
 Additional protocols can be provided as demand requires. If desired, any protocol can be implemented by a contributer or forker of this repository.  
