@@ -172,7 +172,7 @@ static void ota_task(void* p)
 void trigger_ota_check()
 {
   if ( event_group != NULL )
-  	xEventGroupSetBits(event_group, BIT_CHECK_OTA);
+    xEventGroupSetBits(event_group, BIT_CHECK_OTA);
 }
 
 void switch_to_factory()

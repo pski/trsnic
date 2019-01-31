@@ -1,0 +1,125 @@
+   1:				;
+   2:				; NIST
+   3:				;
+   4:				; THIS IS AN EXAMPLE OF USING TRSNIC WITH A SIMPLE NON-BLOCKING 
+   5:				; FIXED RESPONSE SIZE TCP/IP SERVICE LISTENING USING IP ADDRESS AND PORT
+   6:				;
+   7:				;
+   8:				
+   9:				*INCLUDE TRSNIC
+**** TRSNIC.asm ****
+   1:     -	0001'         		IFNDEF	NIC_ASM
+   2:				
+   3:					EXT	NICINIT
+   4:					EXT	NICSEND
+   5:					EXT	NICRECV
+   6:					EXT	NICCLOS
+   7:				
+   8:					ENDIF
+   9:				
+  10:     -	0000'         		END
+**** nistnonb.asm ****
+  10:				
+  11:				;CONNECT TO THE NIST TIME SERVER
+  12:				;time-a-wwv.nist.gov	132.163.97.1	WWV, Fort Collins, Colorado
+  13:				
+  14:     -	0084'         	DESTIP1		EQU	132		; BYTE 1 OF IP ADDR TO CONNECT
+  15:     -	00A3'         	DESTIP2		EQU	163		; BYTE 2 OF IP ADDR TO CONNECT
+  16:     -	0061'         	DESTIP3		EQU	97		; BYTE 3 OF IP ADDR TO CONNECT
+  17:     -	0001'         	DESTIP4		EQU	1			; BYTE 4 OF IP ADDR TO CONNECT
+  18:     -	000D'         	DESTPORT	EQU	13		; TCP PORT TO CONNECT
+  19:				
+  20:     -	0000'         	START::	EQU	$
+  21:				
+  22:    0+10	0000' 110D00  		LD	DE,DESTPORT	;THE DESTINATION PORT
+  23:   10+7	0003' 2684    		LD	H,DESTIP1		;FIRST BYTE OF DEST IP
+  24:   17+7	0005' 2EA3    		LD	L,DESTIP2		;SECOND BYTE OF DEST IP
+  25:   24+7	0007' 0661    		LD	B,DESTIP3		;THIRD BYTE OF DEST IP
+  26:   31+7	0009' 0E01    		LD	C,DESTIP4		;FOURTH BYTE OF DEST IP
+  27:				
+  28:   38+17	000B' CD0000  		CALL NICINIT		;INITIALIZE TRSNIC
+  29:				
+  30:				;SET UP FOR RECV
+  31:				
+  32:   55+14	000E' DD214300		LD	IX,RESBUF	;IX IS THE INDEX INTO THE RECV BUFFER
+  33:   69+10	0012' 010000  		LD	BC,0			;TOTAL RESPONSE BYTE COUNT
+  34:				
+  35:     -	0015'         	DONIC
+  36:				
+  37:   79+11	0015' C5      		PUSH	BC		;SAVE TOTAL RESPONSE BYTE COUNT
+  38:   90+15	0016' DDE5    		PUSH	IX		;GET BUFFER INDEX INTO HL
+  39:  105+10	0018' E1      		POP		HL
+  40:				
+  41:				;SET UP RECV PARAMS
+  42:  115+10	0019' 010000  		LD	BC,0			;MAX 64K BUFFER SO TOP 2 MSB LEN BYTES ARE ZERO
+  43:  125+10	001C' 113300  		LD	DE,RESLEN	;2 LSB ARE THE BUFFER SIZE
+  44:  135+7	001F' 3E01    		LD	A,1				;USE NON-BLOCKING
+  45:				
+  46:  142+15	0021' DDE5    		PUSH	IX
+  47:  157+17	0023' CD0000  		CALL	NICRECV
+  48:  174+14	0026' DDE1    		POP	IX
+  49:					
+  50:  188+15	0028' DD19    		ADD	IX,DE		;ADD BYTES RECEIVED TO BUFFER INDEX
+  51:				
+  52:  203+10	002A' E1      		POP	HL			;SAVED BYTE COUNT INTO HL
+  53:  213+11	002B' 19      		ADD	HL,DE		;DE HAS THE BYTES READ ON THIS RECV
+  54:  224+11	002C' E5      		PUSH	HL
+  55:  235+10	002D' C1      		POP		BC
+  56:				
+  57:				;BC NOW HAS TOTAL BYTES READ SO FAR
+  58:				
+  59:				;CHECK IF TOTAL RETURN BYTES = EXPECTED RETURN BYTES
+  60:  245+10	002E' 213300  		LD	HL,51		;EXPECTED BYTE COUNT IS 51 BYTES
+  61:  255+4	0031' B7      		OR	A						;THESE 3 LINES ARE 16BIT CP
+  62:  259+15	0032' ED42    		SBC	HL,BC
+  63:  274+11	0034' 09      		ADD	HL,BC
+  64:				
+  65:  285+7+5	0035' 20DE    		JR	NZ,DONIC	;WE HAVE NOT RECEIVED ALL THE BYTES YET, KEEP READING
+  66:				
+  67:				;WE HAVE THE EXPECTED BYTES
+  68:				
+  69:  292+10	0037' 214300  		LD	HL,RESBUF	;HL HAS THE RESPONSE BUFFER
+  70:				
+  71:				;BCDE HAS THE RESPONSE LENGTH (WE IGNORE 2 UPPER MSB IN BC)
+  72:				
+  73:				;DO SOMETHING WITH RESPONSE
+  74:				
+  75:  302+17	003A' CD6744  		CALL	4467H		;PRINT OUT RESPONSE
+  76:				
+  77:				;CLOSE THE SOCKET
+  78:				
+  79:  319+17	003D' CD0000  		CALL NICCLOS
+  80:				
+  81:  336+10	0040' C33040  		JP	4030H			;EXIT
+  82:				
+  83:     -	0043'         	RESBUF	DS	51		;20 BYTE RESPONSE BUFFER
+  84:     -	0076' 0D      					DB	13		;CR/LF AT END OF RESPONSE
+  85:     -	0033'         	RESLEN	EQU	51
+  86:				
+
+
+
+Statistics:
+
+     4	passes
+     0	jr promotions
+    13	symbols
+    68	bytes
+
+
+
+Symbol Table:
+
+destip1        =  84     
+destip2        =  a3     
+destip3        =  61     
+destip4        =   1     
+destport       =   d     
+donic             15'    
+nicclos            0      (extern)
+nicinit            0      (extern)
+nicrecv            0      (extern)
+nicsend            0      (extern)
+resbuf            43'    
+reslen         =  33     
+start          =   0'     (public)

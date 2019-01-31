@@ -1,0 +1,428 @@
+   1:				;###############################
+   2:				;
+   3:				; TRSNIC ROUTINES
+   4:				;
+   5:				;###############################
+   6:				
+   7:     -	FFFF'         	NIC_ASM	EQU	-1
+   8:				
+   9:     -	000D'         	CR  EQU 13
+  10:     -	0013'         	LF  EQU 19
+  11:				
+  12:     -	001F'         	NICPORT EQU	31	;TRSNIC Z80 PORT
+  13:     -	0014'         	TCPIP		EQU	20
+  14:				
+  15:				;TRSNIC API COMMANDS
+  16:     -	0001'         	APISOCK		EQU	1	;SOCKET
+  17:     -	0002'         	APICONN		EQU	2	;CONNECT
+  18:     -	0003'         	APISEND		EQU	3	;SEND
+  19:     -	0005'         	APIRECV		EQU	5	;RECV
+  20:     -	0007'         	APICLOS		EQU	7	;CLOSE
+  21:				
+  22:     -	0001'         	NICIP4		EQU	1	;AF_INET4 (IPV4)
+  23:     -	0001'         	NICTCP		EQU	1	;SOCK_STREAM (TCP)
+  24:     -	0000'         	NICVER		EQU	0	;TRSNIC VERSION
+  25:     -	0000'         	HOSTFRMT	EQU	0	;IP ADDRESS
+  26:				
+  27:     -	00E0'         	INTPORT		EQU	0E0H
+  28:				
+  29:				;
+  30:				; TRSNIC API
+  31:				;
+  32:				; <TCPIP><SOCKET><FAMILY><TYPE><VERSION>
+  33:				; <TCPIP><CONNECT><SOCKFD><HOST FORMAT><IP4><IP3><IP2><IP1><PORT2><PORT1>
+  34:				; <TCPIP><SEND><SOCKFD><L4><L3><L2><L1><DATA...>
+  35:				; <TCPIP><RECV><SOCKFD><L4><L3><L2><L1>
+  36:				; <TCPIP><CLOSE><SOCKFD>
+  37:				
+  38:				;THE INPUT/OUTPUT BUFFER
+  39:     -	0000'         	NICBUFF	DS	1000	;CHANGE THESE TO USE SHARED BUFFER WITH MISE/SERIAL
+  40:     -	03E8'         	BUFFLEN	EQU	1000
+  41:     -	03E8'         	SOCKFD	DS	1			;THE ESTABLISHED SOCKET FILE DESCRIPTOR
+  42:				
+  43:     -	03E9'         	WAITINT
+  44:				
+  45:    0+7	03E9' 0EE0    		LD	C,INTPORT		;WAIT FOR BUS INTERRUPT FROM TRSNIC
+  46:    7+12	03EB' ED78    		IN	A,(C)
+  47:   19+8	03ED' CB5F    		BIT	3,A					;BIT 3 IS THE IOBUS INT BIT
+  48:   27+7+5	03EF' 28F8    		JR	Z,WAITINT		;KEEP WAITING IF BIT IS SET
+  49:   34+10	03F1' C9      		RET
+  50:				
+  51:				;###################################
+  52:				; NICINIT                          #
+  53:				;                                  #
+  54:				; OPEN A TCP/IP CONNECTION         #
+  55:				; TO A SERVER                      #
+  56:				;                                  #
+  57:				; REQUEST:                         #
+  58:				; DE	DEST PORT                    #
+  59:				; H		DEST IP4                     #
+  60:				; L		DEST IP3                     #
+  61:				; B		DEST IP2                     #
+  62:				; C		DEST IP1                     #
+  63:				;                                  #
+  64:				; WHERE IP4.IP3.IP2.IP1            #
+  65:				;                                  #
+  66:				;###################################
+  67:     -	03F2'         	NICINIT::
+  68:				
+  69:   44+11	03F2' E5      		PUSH	HL	;SAVE CONNECTION PARAMS
+  70:   55+11	03F3' C5      		PUSH	BC
+  71:   66+11	03F4' D5      		PUSH	DE
+  72:				
+  73:				;ENABLE MODEL III/4 BUS
+  74:				
+  75:   77+7	03F5' 3E10    		LD	A,16
+  76:   84+7	03F7' 0EEC    		LD	C,236
+  77:   91+12	03F9' ED79    		OUT	(C),A
+  78:					
+  79:				;FIRST CREATE A TCP/IP SOCKET
+  80:				
+  81:  103+14	03FB' DD210000		LD	IX,NICBUFF
+  82:  117+19	03FF' DD360014		LD	(IX+0),TCPIP		;TCP/IP PROTOCOL
+  83:  136+19	0403' DD360101		LD	(IX+1),APISOCK	;CREATE A SOCKET
+  84:  155+19	0407' DD360201		LD	(IX+2),NICIP4		;USE IPV4
+  85:  174+19	040B' DD360301		LD	(IX+3),NICTCP		;USE TCP
+  86:  193+19	040F' DD360400		LD	(IX+4),NICVER		;TRSNIC TCP/IP API VERSION
+  87:  212+10	0413' 210000  		LD	HL,NICBUFF			;SEND BUFFER INTO HL
+  88:  222+7	0416' 0605    		LD	B,5							;SEND 5 BYTES
+  89:  229+7	0418' 0E1F    		LD	C,NICPORT				;THE TRSNIC PORT
+  90:  236+16+5	041A' EDB3    		OTIR								;SEND 5 BYTE SOCKET COMMAND
+  91:				
+  92:  252+17	041C' CDE903  		CALL	WAITINT
+  93:				
+  94:				;HANDLE SOCKET RESPONSE
+  95:				
+  96:  269+7	041F' 0E1F    		LD	C,NICPORT				;THE TRSNIC PORT
+  97:  276+12	0421' ED78    		IN	A,(C)						;GET STATUS BYTE
+  98:  288+10	0423' C23405  		JP	NZ,SOCKERR
+  99:  298+12	0426' ED78    		IN	A,(C)						;SECOND BYTE IS THE SOCKFD
+ 100:  310+13	0428' 32E803  		LD	(SOCKFD),A			;STORE IT
+ 101:				
+ 102:				;CONNECT TO THE SERVER
+ 103:				
+ 104:  323+14	042B' DD210000		LD	IX,NICBUFF			;CREATE THE CONNECT COMMAND
+ 105:  337+19	042F' DD360014		LD	(IX+0),TCPIP		;TCP/IP PROTOCOL
+ 106:  356+19	0433' DD360102		LD	(IX+1),APICONN	;CONNECT TO SOCKET
+ 107:  375+13	0437' 3AE803  		LD	A,(SOCKFD)			;THE ESTABLISHED SOCKFD
+ 108:  388+19	043A' DD7702  		LD	(IX+2),A
+ 109:  407+7	043D' 3E00    		LD	A,HOSTFRMT			;HOST FORMAT = IP ADDRESS
+ 110:  414+19	043F' DD7703  		LD	(IX+3),A
+ 111:				
+ 112:  433+10	0442' D1      		POP	DE							;GET THE SAVED CONNECTION PARAMS
+ 113:  443+10	0443' C1      		POP	BC
+ 114:  453+10	0444' E1      		POP	HL
+ 115:				
+ 116:  463+19	0445' DD7404  		LD	(IX+4),H				;THE 4 BYTE IP ADDRESS
+ 117:  482+19	0448' DD7505  		LD	(IX+5),L
+ 118:  501+19	044B' DD7006  		LD	(IX+6),B
+ 119:  520+19	044E' DD7107  		LD	(IX+7),C
+ 120:  539+19	0451' DD7208  		LD	(IX+8),D				;THE 2 BYTE PORT
+ 121:  558+19	0454' DD7309  		LD	(IX+9),E
+ 122:  577+10	0457' 210000  		LD	HL,NICBUFF
+ 123:  587+7	045A' 060A    		LD	B,10
+ 124:  594+7	045C' 0E1F    		LD	C,NICPORT 
+ 125:  601+16+5	045E' EDB3    		OTIR								;SEND THE CONNECT COMMAND
+ 126:				
+ 127:  617+17	0460' CDE903  		CALL	WAITINT
+ 128:				
+ 129:				;HANDLE CONNECT RESPONSE
+ 130:				
+ 131:  634+7	0463' 0E1F    		LD	C,NICPORT				;THE TRSNIC PORT
+ 132:  641+12	0465' ED78    		IN	A,(C)						;GET STATUS BYTE
+ 133:  653+10	0467' C23905  		JP	NZ,CONNERR
+ 134:				
+ 135:				;WE HAVE SUCCESSFULLY CONNECTED TO SERVER
+ 136:				
+ 137:  663+10	046A' C9      		RET
+ 138:				
+ 139:				;###################################
+ 140:				; NICSEND                          #
+ 141:				;                                  #
+ 142:				; SEND A REQUEST USING TRSNIC      #
+ 143:				;                                  #
+ 144:				; REQUEST:                         #
+ 145:				; 	HL = REQUEST BUFFER            #
+ 146:				; 	DE = REQUEST LENGTH            #
+ 147:				;                                  #
+ 148:				; RESPONSE:                        #
+ 149:				; 	DE = #BYTES ACTUALLY SENT      #
+ 150:				;###################################
+ 151:     -	046B'         	NICSEND::
+ 152:				
+ 153:  673+4	046B' 7A      		LD	A,D			;CHECK FOR ZERO LENGTH
+ 154:  677+4	046C' B3      		OR	E
+ 155:  681+5+6	046D' C8      		RET	Z			;JUST RETURN IF ZERO LENGTH
+ 156:				
+ 157:  686+11	046E' E5      		PUSH	HL		;STORE REQUEST BUFFER
+ 158:				
+ 159:				;SEND THE TRSNIC SEND HEADER FIRST
+ 160:				
+ 161:  697+14	046F' DD210000		LD	IX,NICBUFF
+ 162:  711+19	0473' DD360014		LD	(IX+0),TCPIP			;TCP/IP PROTOCOL
+ 163:  730+19	0477' DD360103		LD	(IX+1),APISEND		;SEND
+ 164:  749+13	047B' 3AE803  		LD	A,(SOCKFD)				;THE ESTABLISHED SOCKFD
+ 165:  762+19	047E' DD7702  		LD	(IX+2),A
+ 166:  781+19	0481' DD360300		LD	(IX+3),0					;MAX 64K REQUEST
+ 167:  800+19	0485' DD360400		LD	(IX+4),0
+ 168:  819+19	0489' DD7205  		LD	(IX+5),D					;THE REQUEST LENGTH
+ 169:  838+19	048C' DD7306  		LD	(IX+6),E
+ 170:				
+ 171:  857+10	048F' 210000  		LD	HL,NICBUFF
+ 172:  867+7	0492' 0607    		LD	B,7
+ 173:  874+7	0494' 0E1F    		LD	C,NICPORT
+ 174:  881+16+5	0496' EDB3    		OTIR
+ 175:				
+ 176:  897+10	0498' E1      		POP	HL				;REQUEST BUFFER INTO HL
+ 177:				
+ 178:				;SEND THE COMMAND DATA NEXT
+ 179:				
+ 180:     -	0499'         	NICSNXT:
+ 181:  907+7	0499' 7E      		LD	A,(HL)
+ 182:  914+12	049A' ED79    		OUT	(C),A
+ 183:  926+6	049C' 1B      		DEC	DE
+ 184:  932+6	049D' 23      		INC	HL
+ 185:  938+4	049E' 7A      		LD	A,D				; CHECK FOR ZERO BYTES LEFT
+ 186:  942+4	049F' B3      		OR	E
+ 187:  946+7+5	04A0' 20F7    		JR	NZ,NICSNXT	; PROCESS NEXT DATA BYTE
+ 188:				
+ 189:  953+17	04A2' CDE903  		CALL	WAITINT
+ 190:				
+ 191:				;HANDLE SEND RESPONSE
+ 192:  970+7	04A5' 0E1F    		LD	C,NICPORT				;THE TRSNIC PORT
+ 193:  977+12	04A7' ED78    		IN	A,(C)						;GET STATUS BYTE
+ 194:  989+10	04A9' C23E05  		JP	NZ,SENDERR
+ 195:				
+ 196:  999+12	04AC' ED60    		IN	H,(C)
+ 197: 1011+12	04AE' ED68    		IN	L,(C)
+ 198: 1023+12	04B0' ED50    		IN	D,(C)		;32BIT SENT LEN INTO BCDE
+ 199: 1035+12	04B2' ED58    		IN	E,(C)
+ 200: 1047+11	04B4' E5      		PUSH	HL
+ 201: 1058+10	04B5' C1      		POP	BC
+ 202:				
+ 203: 1068+10	04B6' C9      		RET
+ 204:				
+ 205:				
+ 206:				;###################################
+ 207:				; NICRECV                          #
+ 208:				;                                  #
+ 209:				; RECEIVE A RESPONSE USING TRSNIC  #
+ 210:				;                                  #
+ 211:				; NOTE: MAX 64K BYTE RECV ONLY     #
+ 212:				;                                  #
+ 213:				; REQUEST:                         #
+ 214:				;	HL RESPONSE BUFFER               #
+ 215:				;	BCDE RESPONSE BUFFER MAX LEN     #
+ 216:				;   A (0 = BLOCKING, 1 = NONBLOCK) #
+ 217:				;                                  #
+ 218:				; RESPONSE:                        #
+ 219:				;	BCDE #BYTES RETURNED IN BUFFER   #
+ 220:				;###################################
+ 221:     -	04B7'         	NICRECV::
+ 222:				
+ 223: 1078+15	04B7' DDE5    		PUSH	IX			;WE MODIFY IX
+ 224: 1093+11	04B9' E5      		PUSH	HL			;STORE RESPONSE BUFFER
+ 225:				
+ 226:				;SEND THE TRSNIC RECV HEADER FIRST
+ 227: 1104+14	04BA' DD210000		LD	IX,NICBUFF
+ 228: 1118+19	04BE' DD7703  		LD	(IX+3),A				;BLOCKING/NON-BLOCKING
+ 229: 1137+19	04C1' DD360014		LD	(IX+0),TCPIP		;TCP/IP PROTOCOL
+ 230: 1156+19	04C5' DD360105		LD	(IX+1),APIRECV	;RECV
+ 231: 1175+13	04C9' 3AE803  		LD	A,(SOCKFD)			;THE ESTABLISHED SOCKFD
+ 232: 1188+19	04CC' DD7702  		LD	(IX+2),A
+ 233: 1207+19	04CF' DD360400		LD	(IX+4),0				;SUPPORT MAX 64K PACKETS
+ 234: 1226+19	04D3' DD360500		LD	(IX+5),0				; SO THE TOP 2 LEN BYTES ARE ZERO
+ 235: 1245+19	04D7' DD7206  		LD	(IX+6),D				;THE RESPONSE BUFFER LENGTH
+ 236: 1264+19	04DA' DD7307  		LD	(IX+7),E
+ 237:				
+ 238: 1283+10	04DD' 210000  		LD	HL,NICBUFF
+ 239: 1293+7	04E0' 0608    		LD	B,8
+ 240: 1300+7	04E2' 0E1F    		LD	C,NICPORT
+ 241: 1307+16+5	04E4' EDB3    		OTIR
+ 242:				
+ 243: 1323+17	04E6' CDE903  		CALL	WAITINT
+ 244:				
+ 245: 1340+10	04E9' E1      		POP	HL					;RESPONSE BUFFER INTO HL
+ 246:				
+ 247: 1350+7	04EA' 0E1F    		LD	C,NICPORT		;THE TRSNIC PORT
+ 248: 1357+12	04EC' ED78    		IN	A,(C)				;GET STATUS BYTE
+ 249: 1369+10	04EE' C24305  		JP	NZ,RECVERR
+ 250:				
+ 251: 1379+12	04F1' ED78    		IN	A,(C)				;IGNORE FIRST LEN BYTE
+ 252: 1391+12	04F3' ED78    		IN	A,(C)				;IGNORE SECOND LEN BYTE
+ 253: 1403+12	04F5' ED50    		IN	D,(C)
+ 254: 1415+12	04F7' ED58    		IN	E,(C)
+ 255:				
+ 256: 1427+4	04F9' 7A      		LD	A,D					;CHECK FOR ZERO LENGTH
+ 257: 1431+4	04FA' B3      		OR	E
+ 258: 1435+7+5	04FB' 280E    		JR	Z,RCVDONE		;JUST RETURN IF ZERO LENGTH
+ 259:				
+ 260: 1442+11	04FD' D5      		PUSH	DE				;STORE LENGTH
+ 261:				
+ 262:     -	04FE'         	NICRNXT:
+ 263:				
+ 264: 1453+12	04FE' ED78    		IN	A,(C)
+ 265: 1465+7	0500' 77      		LD	(HL),A
+ 266: 1472+6	0501' 1B      		DEC	DE
+ 267: 1478+6	0502' 23      		INC	HL
+ 268: 1484+4	0503' 7A      		LD	A,D			; CHECK FOR ZERO BYTES LEFT
+ 269: 1488+4	0504' B3      		OR	E
+ 270: 1492+7+5	0505' 20F7    		JR	NZ,NICRNXT	; PROCESS NEXT DATA BYTE
+ 271:				
+ 272: 1499+10	0507' 010000  		LD	BC,0		;MAX 64K RECV SO TOP 2 BYTES ARE ZERO
+ 273: 1509+10	050A' D1      		POP	DE			;GET STORED LENGTH INTO DE
+ 274:				
+ 275:     -	050B'         	RCVDONE
+ 276:				
+ 277: 1519+14	050B' DDE1    		POP	IX			;RESTORE IX
+ 278: 1533+10	050D' C9      		RET
+ 279:				
+ 280:				
+ 281:				;###################################
+ 282:				; NICCLOS                          #
+ 283:				;                                  #
+ 284:				; CLOSE THE SOCKET                 #
+ 285:				;                                  #
+ 286:				;###################################
+ 287:     -	050E'         	NICCLOS::
+ 288:				
+ 289: 1543+14	050E' DD210000		LD	IX,NICBUFF
+ 290: 1557+19	0512' DD360014		LD	(IX+0),TCPIP		;TCP/IP PROTOCOL
+ 291: 1576+19	0516' DD360107		LD	(IX+1),APICLOS	;CLOSE
+ 292: 1595+13	051A' 3AE803  		LD	A,(SOCKFD)			;THE ESTABLISHED SOCKFD
+ 293: 1608+19	051D' DD7702  		LD	(IX+2),A
+ 294:				
+ 295: 1627+10	0520' 210000  		LD	HL,NICBUFF
+ 296: 1637+7	0523' 0603    		LD	B,3
+ 297: 1644+7	0525' 0E1F    		LD	C,NICPORT
+ 298: 1651+16+5	0527' EDB3    		OTIR
+ 299:				
+ 300: 1667+17	0529' CDE903  		CALL	WAITINT
+ 301:				
+ 302: 1684+7	052C' 0E1F    		LD	C,NICPORT				;THE TRSNIC PORT
+ 303: 1691+12	052E' ED78    		IN	A,(C)						;GET STATUS BYTE
+ 304: 1703+10	0530' C24805  		JP	NZ,CLOSERR
+ 305:				
+ 306: 1713+10	0533' C9      		RET
+ 307:				
+ 308:				
+ 309:				;SOCKET ERROR HANDLERS
+ 310:     -	0534'         	SOCKERR
+ 311: 1723+10	0534' 215105  		LD	HL,EMGSOCK
+ 312: 1733+12	0537' 1812    		JR	DISPERR
+ 313:				
+ 314:     -	0539'         	CONNERR
+ 315: 1745+10	0539' 216805  		LD	HL,EMGCONN
+ 316: 1755+12	053C' 180D    		JR	DISPERR
+ 317:				
+ 318:     -	053E'         	SENDERR
+ 319: 1767+10	053E' 218405  		LD	HL,EMGSEND
+ 320: 1777+12	0541' 1808    		JR	DISPERR
+ 321:				
+ 322:     -	0543'         	RECVERR
+ 323: 1789+10	0543' 219D05  		LD	HL,EMGRECV
+ 324: 1799+12	0546' 1803    		JR	DISPERR
+ 325:				
+ 326:     -	0548'         	CLOSERR
+ 327: 1811+10	0548' 21BA05  		LD	HL,EMGCLOS
+ 328:				
+ 329:     -	054B'         	DISPERR			;DISPLAY ERROR MESSAGE
+ 330:				
+ 331:				; ENABLE THIS SECTION FOR M4 LSDOS/TRSDOS6
+ 332:				;	LD	A,2
+ 333:				;	RST	28H   ;DISPLAY
+ 334:				;	LD	A,21
+ 335:				;	RST	28H   ;ABORT
+ 336:				
+ 337:				; ENABLE THIS SECTION FOR M3
+ 338: 1821+17	054B' CD6744  		CALL	4467H ;DISPLAY
+ 339: 1838+17	054E' CD3040  		CALL	4030H ;ABORT
+ 340:				
+ 341:				;MESSAGES
+ 342:     -	0551' 4552524F	EMGSOCK	DB	'ERROR CREATING SOCKET',CR,LF
+	      52204352
+	      45415449
+	      4E472053
+	      4F434B45
+	      540D13
+ 343:     -	0568' 4552524F	EMGCONN	DB	'ERROR CONNECTING TO SOCKET',CR,LF
+	      5220434F
+	      4E4E4543
+	      54494E47
+	      20544F20
+	      534F434B
+	      45540D13
+ 344:     -	0584' 4552524F	EMGSEND	DB	'ERROR SENDING TO SOCKET',CR,LF
+	      52205345
+	      4E44494E
+	      4720544F
+	      20534F43
+	      4B45540D
+	      13
+ 345:     -	059D' 4552524F	EMGRECV	DB	'ERROR RECEIVING FROM SOCKET',CR,LF
+	      52205245
+	      43454956
+	      494E4720
+	      46524F4D
+	      20534F43
+	      4B45540D
+	      13
+ 346:     -	05BA' 4552524F	EMGCLOS	DB	'ERROR CLOSING SOCKET',CR,LF
+	      5220434C
+	      4F53494E
+	      4720534F
+	      434B4554
+	      0D13
+**** trsnic.s ****
+ 347:					
+
+
+
+Statistics:
+
+     4	passes
+     0	jr promotions
+    37	symbols
+   487	bytes
+
+
+
+Symbol Table:
+
+apiclos        =   7     
+apiconn        =   2     
+apirecv        =   5     
+apisend        =   3     
+apisock        =   1     
+bufflen        = 3e8     
+closerr          548'    
+connerr          539'    
+cr             =   d     
+disperr          54b'    
+emgclos          5ba'    
+emgconn          568'    
+emgrecv          59d'    
+emgsend          584'    
+emgsock          551'    
+hostfrmt       =   0     
+intport        =  e0     
+lf             =  13     
+nic_asm        =ffffffff 
+nicbuff            0'    
+nicclos          50e'     (public)
+nicinit          3f2'     (public)
+nicip4         =   1     
+nicport        =  1f     
+nicrecv          4b7'     (public)
+nicrnxt          4fe'    
+nicsend          46b'     (public)
+nicsnxt          499'    
+nictcp         =   1     
+nicver         =   0     
+rcvdone          50b'    
+recverr          543'    
+senderr          53e'    
+sockerr          534'    
+sockfd           3e8'    
+tcpip          =  14     
+waitint          3e9'    

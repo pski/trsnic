@@ -76,7 +76,7 @@ void tcp_get_send_buffer(uint8_t** buf, int* size)
 
 void readCommand(uint8_t value) {
   
-  //ESP_LOGI(TAG,"IP_STATE_READ_COMMAND with count %d and value %d \n", byteCounter, value);
+  ESP_LOGI(TAG,"IP_STATE_READ_COMMAND with count %d and value %d \n", byteCounter, value);
   
   ipCommand = value;
   switch(ipCommand) {
@@ -292,7 +292,7 @@ void readRecvOption(uint8_t value) {
 
 void readLength(uint8_t value) {
   
-  //ESP_LOGI(TAG,"IP_STATE_READ_LENGTH with count %d and value %d \n", byteCounter, value); 
+  ESP_LOGI(TAG,"IP_STATE_READ_LENGTH with count %d and value %d \n", byteCounter, value); 
   
   switch(paramCounter) {
     case 1:
@@ -343,7 +343,7 @@ void readLength(uint8_t value) {
 
 void readData(uint8_t value) {
   
-  //ESP_LOGI(TAG,"IP_STATE_READ_DATA with count %d and value %d \n", byteCounter, value);
+  ESP_LOGI(TAG,"IP_STATE_READ_DATA with count %d and value %d \n", byteCounter, value);
   
   if ( left > 0 ) {
     buffer[dataLength-left] = value;
@@ -550,16 +550,18 @@ bool doSend() {
 
 bool doRecv() {
   
-  //ESP_LOGI(TAG, "Reading from socket\n");
+  ESP_LOGI(TAG, "Reading from socket\n");
   
   left = 0;
   
   int option = 0;
   switch( recvOption ) {
     case IP_RECV_BLOCKING:
+    	ESP_LOGI(TAG, "BLOCKING\n");
       option = MSG_WAITALL;
     break;
     case IP_RECV_NONBLOCKING:
+    	ESP_LOGI(TAG, "NON-BLOCKING\n");
       option = MSG_DONTWAIT;
     break;
     default:
@@ -597,7 +599,7 @@ bool doRecv() {
     //This can use some tweaking
     vTaskDelay(500 / portTICK_PERIOD_MS);
               
-    //ESP_LOGI(TAG, "... done reading from socket.");
+    ESP_LOGI(TAG, "... done reading from socket.");
           
   return true;
   

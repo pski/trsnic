@@ -24,7 +24,9 @@ void app_main(void)
     switch_to_factory();
   }
   
-  init_ota();
+  //trsnic does not use RS OTA at this time
+  //init_ota();
+  
   init_wifi();
 
   while (true) {

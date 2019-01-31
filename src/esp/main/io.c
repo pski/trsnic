@@ -33,27 +33,32 @@ void io_task(void* p)
 {
   
   while (true) {
-	    
-	    uint8_t* buf;
-	    int size;
-	    
-	    uint8_t protocol = read_byte();
-	    
-	    switch( protocol ) {
-		    case PROTOCOL_PREFIX_TCPIP:
-				while (tcp_z80_out(read_byte()) != IP_STATE_SEND_TO_Z80);
-				tcp_get_send_buffer(&buf, &size);
-			    break;
-		    default:
-			    if ( rs_z80_out(protocol) != RS_STATE_SEND )
-			    	while (rs_z80_out(read_byte()) != RS_STATE_SEND);
-				rs_get_send_buffer(&buf, &size);
-			    break;
-	    }
-	  
-	    write_bytes(buf, size);
+
+    uint8_t* buf;
+    int size;
+    
+    uint8_t protocol = read_byte();
+
+    switch( protocol ) {
+    
+      case PROTOCOL_PREFIX_TCPIP:
+        while (tcp_z80_out(read_byte()) != IP_STATE_SEND_TO_Z80);
+        tcp_get_send_buffer(&buf, &size);
+        break;
+      default:
+        if ( rs_z80_out(protocol) != RS_STATE_SEND )
+          while (rs_z80_out(read_byte()) != RS_STATE_SEND);
+        rs_get_send_buffer(&buf, &size);
+        break;
+    }
+
+    write_bytes(buf, size);
+    
+		ESP_LOGI(TAG,"response is %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d", 
+		    buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9], buf[10], buf[11], buf[12], buf[13], buf[14], buf[15], buf[16], buf[17]);
 
   }
+
 }
 
 
@@ -61,28 +66,28 @@ void io_task_2(void* p)
 {
   
   while (true) {
-	    
-	    uint8_t* buf;
-	    int size;
-	    
-	    uint8_t protocol = read_byte();
-	    
-	    switch( protocol ) {
-		    case PROTOCOL_PREFIX_TCPIP:
-				while (tcp_z80_out(read_byte()) != IP_STATE_SEND_TO_Z80);
-				tcp_get_send_buffer(&buf, &size);
-			    break;
-		    case PROTOCOL_PREFIX_RS:
-				while (rs_z80_out(read_byte()) != RS_STATE_SEND);
-				rs_get_send_buffer(&buf, &size);
-			    break;
-		    default:
-		    	ESP_LOGE(TAG, "Unknown protocol %d", protocol);
-				continue;
-				break;
-	    }
-	  
-	    write_bytes(buf, size);
+
+    uint8_t* buf;
+    int size;
+
+    uint8_t protocol = read_byte();
+
+    switch( protocol ) {
+      case PROTOCOL_PREFIX_TCPIP:
+        while (tcp_z80_out(read_byte()) != IP_STATE_SEND_TO_Z80);
+        tcp_get_send_buffer(&buf, &size);
+        break;
+      case PROTOCOL_PREFIX_RS:
+        while (rs_z80_out(read_byte()) != RS_STATE_SEND);
+        rs_get_send_buffer(&buf, &size);
+        break;
+      default:
+        ESP_LOGE(TAG, "Unknown protocol %d", protocol);
+        continue;
+        break;
+    }
+
+    write_bytes(buf, size);
 
   }
 }
