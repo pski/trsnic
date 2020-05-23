@@ -18,7 +18,7 @@ The original RetroStoreCard looks like the one above.  If you have one of these,
 |ESP 25| IC3 14
 |ESP 26| IC3 11
 |ESP 27| IC3 12
-|IC1 6| IC3 5
+|IC1 6| IC3 6
 |IC1 7| IC3 7
 |IC1 8| IC3 8
 |IC1 9| IC3 9
